@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 use regex::Regex;
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 enum BumpType {
     Major,
     Minor,
@@ -41,15 +42,18 @@ fn get_bump_type(repo: &Repository, tag: &str) -> Result<BumpType, Error> {
         let commit = repo.find_commit(rev?)?;
         let message = commit.summary_bytes().unwrap_or_else(|| commit.message_bytes());
         let message = String::from_utf8_lossy(message);
+        println!("Parsing {}", message);
         if message.contains("BREAKING CHANGE") {
-            return Ok(BumpType::Major)
+            bump = BumpType::Major;
+            break
         }
-        let re = Regex::new(r"^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z ]+\))?: [\w ]+$").unwrap();
+        let re = Regex::new(r"(\w+)(?:\(([^\)\s]+)\))?:(.+)(?:$)").unwrap();
         let commit_type = match re.captures(&message) {
             Some(caps) => caps.get(1).map_or(tag, |m| m.as_str()),
             None => continue
         };
 
+        println!("Commit type {}", commit_type);
         let commit_bump = match commit_type {
             "feat" => BumpType::Minor,
             "fix" => BumpType::Patch,
@@ -61,6 +65,7 @@ fn get_bump_type(repo: &Repository, tag: &str) -> Result<BumpType, Error> {
         }
 
     }
+    println!("Bumping with {:?}", bump);
     Ok(bump)
 }
 
