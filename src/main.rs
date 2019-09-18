@@ -47,7 +47,7 @@ fn get_bump_type(repo: &Repository, tag: &str) -> Result<BumpType, Error> {
         let re = Regex::new(r"^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z ]+\))?: [\w ]+$").unwrap();
         let commit_type = match re.captures(&message) {
             Some(caps) => caps.get(1).map_or(tag, |m| m.as_str()),
-            None => return Err(Error::from_str(format!("This commit is not conventional: {}", message).as_str())),
+            None => continue
         };
 
         let commit_bump = match commit_type {
