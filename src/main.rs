@@ -1,3 +1,6 @@
+#[macro_use] extern crate log;
+extern crate env_logger;
+
 use git2::{Repository, Error};
 use semver::{Version, SemVerError};
 use std::cmp::Ordering;
@@ -21,7 +24,7 @@ fn main() {
     };
 
     let mut current_version = validate_tag(&last_tag).unwrap();
-    println!("Current version is {}", current_version);
+    info!("Current version is {}", current_version);
 
     match get_bump_type(&repo, &last_tag) {
         Ok(BumpType::Major) => current_version.increment_major(),
@@ -30,7 +33,8 @@ fn main() {
         Err(e) => panic!("error: {}", e),
     };
 
-    println!("Next version is {}", current_version);
+    info!("Next version is {}", current_version);
+    println!("{}", current_version);
 }
 
 fn get_bump_type(repo: &Repository, tag: &str) -> Result<BumpType, Error> {
@@ -42,7 +46,7 @@ fn get_bump_type(repo: &Repository, tag: &str) -> Result<BumpType, Error> {
         let commit = repo.find_commit(rev?)?;
         let message = commit.summary_bytes().unwrap_or_else(|| commit.message_bytes());
         let message = String::from_utf8_lossy(message);
-        println!("Parsing {}", message);
+        debug!("Parsing {}", message);
         if message.contains("BREAKING CHANGE") {
             bump = BumpType::Major;
             break
@@ -53,7 +57,7 @@ fn get_bump_type(repo: &Repository, tag: &str) -> Result<BumpType, Error> {
             None => continue
         };
 
-        println!("Commit type {}", commit_type);
+        debug!("Commit type {}", commit_type);
         let commit_bump = match commit_type {
             "feat" => BumpType::Minor,
             "fix" => BumpType::Patch,
@@ -65,7 +69,7 @@ fn get_bump_type(repo: &Repository, tag: &str) -> Result<BumpType, Error> {
         }
 
     }
-    println!("Bumping with {:?}", bump);
+    info!("Bumping with {:?}", bump);
     Ok(bump)
 }
 
@@ -75,7 +79,7 @@ fn validate_tag(tag: &str) -> Result<semver::Version, SemVerError> {
         Some(caps) => caps.get(1).map_or(tag, |m| m.as_str()),
         None => tag,
     };
-    println!("Validating tag {}", tag);
+    debug!("Validating tag {}", tag);
     Version::parse(tag)
 }
 
@@ -93,7 +97,6 @@ fn get_version_from_tag(repo: &Repository) -> Result<String, Error> {
     else {
         let max_tag = tags.iter().max_by(|x, y| {
             if let (Some(x), Some(y)) = (x, y) {
-                println!("{} {}", x, y);
                 let v1 = validate_tag(x).unwrap();
                 let v2 = validate_tag(y).unwrap();
                 return v1.cmp(&v2);
@@ -101,7 +104,6 @@ fn get_version_from_tag(repo: &Repository) -> Result<String, Error> {
             Ordering::Greater
         }).unwrap();
 
-        println!("Older tag is {}", max_tag.unwrap());
         Ok(String::from(max_tag.unwrap()))
     }
 }
